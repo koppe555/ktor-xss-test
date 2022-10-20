@@ -1,70 +1,75 @@
-# kotor_http_api
+# 概要
 
-## ファイル関連
-
-### build.gradle.kts
-ktorサーバーに必要なパッケージなどの依存関係が書いてある。
-
-### main/resources
-設定ファイルが入ってる。
-
-### main/kotlin
-自動生成されたコードが入ってる。
+Webページの出力に対してスクリプトを仕込んで悪用することをXSS（クロスサイトスクリプティング）と呼ぶ。
+<img width="575" alt="image" src="https://user-images.githubusercontent.com/44897118/196904733-36549762-bae8-4e84-8efc-8d5a809504ac.png">
 
 
-## 依存関係パッケージ
 
-```
-dependencies {
-    implementation("io.ktor:ktor-server-core:$ktor_version")
-    implementation("io.ktor:ktor-server-netty:$ktor_version")
-    implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
-    implementation("ch.qos.logback:logback-classic:$logback_version")
-    testImplementation("io.ktor:ktor-server-test-host:$ktor_version")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
-}
-```
-
-### ktor-server-core
-コアコンポーネント
-
-### ktor-server-netty
-nettyエンジン。外部のアプリケーションコンテナに依存することなくサーバー機能を作れる？
-
-### ktor-server-content-negotiation, ktor-serialization-kotlinx-json
-jsonのシリアライザー。kotlinオブジェクトとjsonの変換をよしなにやってくれる。
-
-### logback-classic
-いい感じにログ出してくれるやつ。
-
-### ktor-server-test-host, kotlin-test-junit
-ユニットテスト用のプラグイン。
+悪意ある第三者からスクリプトをサイトに埋め込まれ、そのスクリプトによって別サイトに飛ばされるから「クロスサイト」と名付けられてる。
 
 
-## 用語
-
-### netty
-非同期のネットワークやり取りをよしなにやってくれるやつ？
-後で詳しく調べる。
+youtubeやtwtter（tweetdeck）も実例があるくらいメジャーな攻撃方法。
+https://www.itmedia.co.jp/enterprise/articles/1007/06/news018.html
+https://www.itmedia.co.jp/news/articles/1009/24/news023.html
 
 
-### ContentNegotiation
-
-ContentNegotiationがヘッダーを確認してjsonならばserializerによってkotlinオブジェクトに変換される。
 
 
-```
-In order for this to work, we need the ContentNegotiation plugin, which is already installed with the json serializer in plugins/Serialization.kt. What does content negotiation do? Let us consider the following request:
 
-GET http://127.0.0.1:8080/customer
-Accept: application/json
-When a client makes such a request, content negotiation allows the server to examine the Accept header, see if it can serve this specific type of content, and if so, return the result.
+## 仕込める場所
 
-JSON support is powered by kotlinx.serialization. We previously used its annotation @Serializable to annotate our Customer data class, meaning that Ktor now knows how to serialize Customers (and collections of Customers!)
-```
+- style sheet
+  - expression()を使っての実行
+- URL
+  - javascript:<スクリプト>　でURLから実行可能
+- charaset
+  - ブラウザにUTF-7と認識させる
+    - 「「+ADw-script+AD4-alert(+ACI-test+ACI-)+ADsAPA-/script+AD4-」→「「<script>alert('test');</script>」になる
+    - エスケープをすり抜けてしまう。
 
 
-続きかく
-# ktor-xss-test
-# ktor-xss-test
+### charasetをもうちょいくわしく
+
+>Content-Type: text/html; charset=UTF-8
+
+charasetを省略してしまうと、ブラウザによってはブラウザ独自の解釈でcharasetを解釈してしまうため危険。テキストの冒頭部分の文字によってcharasetを推測してくれる挙動がある。例えば「+ADw-script+AD4-alert(+ACI-test+ACI-)+ADsAPA-/script+AD4-」の文字を埋め込まれるとcharasetがUTF-7と解釈され、変換後は「<script>alert('test');</script>となる。
+
+
+<img width="582" alt="image" src="https://user-images.githubusercontent.com/44897118/196904639-b86e7391-112c-4b83-8774-4aedabffd9d5.png">
+
+https://gihyo.jp/dev/serial/01/php-security/0020
+
+charasetを設定すれば防げる。
+
+>3. 外部リソースを指している要素に設定されている charset 属性値したがって、文字コードの指定箇所は、1.の「HTTP ヘッダの Content-Type フィールドの charset パラメータ」であることが望ましいと考えられます。
+
+
+## 対策
+
+- 基本的な対策はエスケープするscriptを動的に生成しないこと、とにかく意図していないスクリプト実行をjsを防ぐことが対策となる。
+- javascript, jsなどを含む文字を排除する方式をブラックリスト方式と呼んでいる。が、ウェブブラウザによっては、「java&#09;script:」や「java(改行コード)script:」等の文字列を「javascript:」と解釈してしまうためあまり有効ではない。
+
+
+
+
+
+## XSSの分類
+
+### 反射型XSS
+攻撃者が罠サイトを用意、そのサイトを被害者が閲覧し、攻撃対象のサーバーに遷移する。
+
+### 持続型XSS
+攻撃対象のサーバーにスクリプトが保存されてしまっている。投稿下内容が他のユーザーが見れるサービスに起こる。
+
+
+
+## その他
+
+googleがxssを学べるサイトを出してる。
+https://xss-game.appspot.com/
+
+解説
+https://sagarvd01.medium.com/learning-xss-with-googles-xss-game-f44ff8ee3d8b
+
+
+
