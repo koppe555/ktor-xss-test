@@ -65,6 +65,66 @@ charasetを設定すれば防げる。
 攻撃対象のサーバーにスクリプトが保存されてしまっている。投稿下内容が他のユーザーが見れるサービスに起こる。
 
 
+## デモ
+
+サーバー起動後
+
+```
+http://localhost:8080/
+```
+
+<img width="556" alt="image" src="https://user-images.githubusercontent.com/44897118/197393205-5e6ecf29-f8be-4010-a6c7-98f581f7908c.png">
+
+### 反射型XSS
+
+```
+http://localhost:8080/blog
+```
+
+<img width="750" alt="image" src="https://user-images.githubusercontent.com/44897118/197393229-2e377b76-10ce-4df1-86fd-6162b101c044.png">
+
+リンクには以下のスクリプトが仕込まれているため、クリックするとcookieが取得できる。
+```
+<p>今ならなんと5000兆円もらえる方法を教えます</p>
+<a href="javascript: location.href = 'http://localhost:8080/showCookie?cookie=' + document.cookie;">詳しく見る</a>
+```
+
+### 持続型XSS
+
+```
+http://localhost:8080/form
+```
+
+<img width="518" alt="image" src="https://user-images.githubusercontent.com/44897118/197393317-e120d94f-e532-4cfa-8f97-39f9bd5cf0b0.png">
+
+<img width="636" alt="image" src="https://user-images.githubusercontent.com/44897118/197393377-4d4c02dc-cf64-4223-a54c-f06b59c686d6.png">
+
+簡易SNS、ユーザーがコメントを投稿できる。
+
+以下のコメントを投稿すると
+
+```
+<a href="javascript: location.href = 'http://localhost:8080/showCookie?cookie=' + document.cookie;">めっちゃ勉強になった記事だった</a>
+```
+
+
+<img width="697" alt="image" src="https://user-images.githubusercontent.com/44897118/197393443-2b950b3d-009d-498a-8ffb-249ae499e8f5.png">
+
+エスケープされていないと見た目上はコメントにリンク貼ってあるだけだがクリックするとスクリプトが動作してcookieが取得できる。
+
+
+
+エスケープ処理がされているスクリプトがただの文字列として出力される。
+
+```
+http://localhost:8080/form-safe
+```
+
+<img width="1354" alt="image" src="https://user-images.githubusercontent.com/44897118/197393515-46399ffe-e281-4f60-a2f0-424bcccfcbc9.png">
+
+
+
+
 
 ## その他
 
